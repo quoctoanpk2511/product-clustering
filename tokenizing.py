@@ -7,6 +7,7 @@ import environ
 from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 from sklearn.metrics.pairwise import cosine_similarity
+from  scipy.cluster import hierarchy
 from scipy.cluster.hierarchy import ward, dendrogram, linkage
 import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
@@ -23,7 +24,7 @@ mydb = MySQLdb.connect(
     db=env('DATABASE_NAME'))
 
 cursor = mydb.cursor()
-cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 6')
+cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11')
 results = cursor.fetchall()
 list_title = []
 for result in results:
@@ -32,7 +33,8 @@ for result in results:
 
 # stopwords = nltk.corpus.stopwords.words('english')
 # print(type(stopwords))
-stopwords = ['black', 'white', 'grey', 'silver', 'unlocked', 'sim', 'free', 'gold', 'rose', 'space', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile']
+stopwords = ['black', 'white', 'grey', 'silver', 'unlocked', 'sim', 'free', 'gold', 'rose', 'space', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile', 'single']
+# stopwords = ['black', 'white', 'grey', 'silver', 'gold', 'rose']
 # stopwords.append(stopwords1)
 stemmer = SnowballStemmer('english')
 # titles = ['apple iphone 8 plus 64gb silver', 'apple iphone 7']
@@ -76,12 +78,18 @@ def tokenize(text):
 # print('there are ' + str(vocab_frame.shape[0]) + ' items in vocab_frame')
 # print(vocab_frame.head())
 
+# tokenizer
+def tokenizer(text):
+    tokens = [word.lower() for word in text.split(' ')]
+    return tokens
+
 tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=True, ngram_range=(1,3), tokenizer=tokenize)
 # print(tfidf_vectorizer)
 start = time.time()
 tfidf_matrix = tfidf_vectorizer.fit_transform(list_title)
 print("Time: ", time.time() - start)
 print(tfidf_matrix.shape)
+# print(tfidf_matrix[0])
 
 terms = tfidf_vectorizer.get_feature_names()
 print(terms)
@@ -92,10 +100,18 @@ print(terms)
 # print(df)
 
 dist = 1 - cosine_similarity(tfidf_matrix)
+# print(dist[0])
+# print(cosine_similarity(tfidf_matrix)[0])
 
 # linkage_matrix = ward(dist) #define the linkage_matrix using ward clustering pre-computed distances
-linkage_matrix = linkage(dist, 'single') #define the linkage_matrix using single-linkage clustering pre-computed distances
-# print(linkage_matrix)
+linkage_matrix = linkage(dist, 'complete') #define the linkage_matrix using single-linkage clustering pre-computed distances
+# for i in range(0, 209):
+#     print(i, ": ", linkage_matrix[i])
+
+# linkage_matrix1 = hierarchy.linkage(dist, metric='cosine')
+# cluster1 = hierarchy.fcluster(linkage_matrix1, 90, criterion='distance')
+# print(cluster1)
+
 
 fig, ax = plt.subplots(figsize=(15, 20)) # set size
 ax = dendrogram(linkage_matrix, orientation="right", labels=list_title);
@@ -111,13 +127,13 @@ plt.tight_layout() #show plot with tight layout
 plt.axvline(x=1.8, color='r', linestyle='--')
 
 # uncomment below to save figure
-plt.savefig('ward_clusters.png', dpi=200) #save figure as ward_clusters
+plt.savefig('cluster_result.png', dpi=200) #save figure as ward_clusters
 # plt.close()
 
 # https://stackoverflow.com/questions/23856002/python-get-clustered-data-hierachical-clustering
 n = len(list_title)
 cluster_dict = dict()
-for i in range(0, 105):
+for i in range(0, 198):
     new_cluster_id = n+i
     old_cluster_id_0 = linkage_matrix[i, 0]
     old_cluster_id_1 = linkage_matrix[i, 1]
@@ -134,6 +150,7 @@ for i in range(0, 105):
         combined_ids += [old_cluster_id_1]
     cluster_dict[new_cluster_id] = combined_ids
 # print(cluster_dict)
+print("Len dict: ", len(cluster_dict))
 
 # test cluster in 104 times loop
 # for i in cluster_dict.keys():
@@ -149,18 +166,25 @@ for i in cluster_dict.keys():
     clusted_list_title[count] = list_cluster
     count+= 1
 
+print(len(clusted_list_title))
+dem = 0
 for i in clusted_list_title:
     print("Cluser: ", i, "Quality: ", len(clusted_list_title.get(i)))
     for title in clusted_list_title.get(i):
         print(title)
+        dem+= 1
+print("Title Quality: ", dem)
 
 # https://stackabuse.com/hierarchical-clustering-with-python-and-scikit-learn/
-# cluster = AgglomerativeClustering(n_clusters=5, affinity='cosine', linkage='single')
-# cluster.fit_predict(linkage_matrix)
-# # cluster.fit(linkage_matrix)
-# print(cluster.n_clusters_)
-#
-# plt.figure(figsize=(10, 7))
-# plt.scatter(linkage_matrix[:,0], linkage_matrix[:,1], c=cluster.labels_, cmap='rainbow')
-# plt.savefig('pic.png', dpi=200)
+# cluster = AgglomerativeClustering(n_clusters=10, affinity='cosine', linkage='complete')
+cluster = AgglomerativeClustering(n_clusters=None, affinity='cosine', linkage='single', distance_threshold=3)
+model = cluster.fit_predict(linkage_matrix)
+# cluster.fit(linkage_matrix)
+print("n cluster: ", cluster.n_clusters_)
+# clust = pd.DataFrame(model)
+# print(clust.count())
+
+plt.figure(figsize=(10, 7))
+plt.scatter(linkage_matrix[:,0], linkage_matrix[:,1], c=cluster.labels_, cmap='rainbow')
+plt.savefig('pic.png', dpi=200)
 plt.close()
