@@ -25,7 +25,7 @@ mydb = MySQLdb.connect(
 
 cursor = mydb.cursor()
 # cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
-cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
+cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 50 AND product_id NOT IN (68, 69, 122, 169)')
 results = cursor.fetchall()
 list_title = []
 for result in results:
@@ -126,7 +126,7 @@ plt.tick_params(\
     labelbottom='off')
 
 plt.tight_layout() #show plot with tight layout
-plt.axvline(x=3.7, color='r', linestyle='--')
+plt.axvline(x=1.8, color='r', linestyle='--')
 
 # uncomment below to save figure
 plt.savefig('cluster_result.png', dpi=200) #save figure as ward_clusters
@@ -159,23 +159,23 @@ print("Len dict: ", len(cluster_dict))
 #     print("Cluster: ", i ,cluster_dict.get(i))
 
 # combine to new list title
-clusted_list_title = dict()
-count = 0
-for i in cluster_dict.keys():
-    list_cluster = []
-    for t in cluster_dict.get(i):
-        list_cluster.append(list_title[int(t)])
-    clusted_list_title[count] = list_cluster
-    count+= 1
-
-print(len(clusted_list_title))
-dem = 0
-for i in clusted_list_title:
-    print("Cluser: ", i, "Quality: ", len(clusted_list_title.get(i)))
-    for title in clusted_list_title.get(i):
-        print(title)
-        dem+= 1
-print("Title Quality: ", dem)
+# clusted_list_title = dict()
+# count = 0
+# for i in cluster_dict.keys():
+#     list_cluster = []
+#     for t in cluster_dict.get(i):
+#         list_cluster.append(list_title[int(t)])
+#     clusted_list_title[count] = list_cluster
+#     count+= 1
+#
+# print(len(clusted_list_title))
+# dem = 0
+# for i in clusted_list_title:
+#     print("Cluser: ", i, "Quality: ", len(clusted_list_title.get(i)))
+#     for title in clusted_list_title.get(i):
+#         print(title)
+#         dem+= 1
+# print("Title Quality: ", dem)
 
 # https://stackabuse.com/hierarchical-clustering-with-python-and-scikit-learn/
 model = AgglomerativeClustering(n_clusters=12, affinity='cosine', linkage='complete')
