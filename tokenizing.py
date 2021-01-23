@@ -207,3 +207,24 @@ plt.figure(figsize=(10, 7))
 plt.scatter(linkage_matrix[:,0], linkage_matrix[:,1], c=model.labels_, cmap='rainbow')
 plt.savefig('pic.png', dpi=200)
 plt.close()
+
+from scipy.cluster.hierarchy import fcluster
+max_d = 10
+clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
+print("Len clusters: ", len(clusters))
+print(clusters)
+
+clus_list = []
+for i in range(0, len(clusters)-1):
+    clus_dict = {'id': i, 'title': list_title[i], 'cluster': clusters.item(i)}
+    clus_list.append(clus_dict)
+
+for i in range(1, max_d):
+    print("Cluster ", i)
+    d = 0
+    for c in clus_list:
+        if c.get('cluster') == i:
+            print(c)
+            d+= 1
+    print("Quality: ", d)
+
