@@ -11,6 +11,8 @@ from  scipy.cluster import hierarchy
 from scipy.cluster.hierarchy import ward, dendrogram, linkage
 import matplotlib.pyplot as plt
 from sklearn.cluster import AgglomerativeClustering
+import re
+from sklearn.feature_extraction.text import CountVectorizer
 
 # Reading .env file
 env = environ.Env()
@@ -23,18 +25,41 @@ mydb = MySQLdb.connect(
     passwd=env('DATABASE_PASSWORD'),
     db=env('DATABASE_NAME'))
 
+query = [
+    'select product_id, product_title, product.cluster_id '
+    'from product join '
+    '(select cluster_id, floor(rand()*(100-1)+1) as ran '
+    'from product '
+    # 'where product.cluster_id < 48 '
+    # 'where product.cluster_id in (4, 10, 14, 17, 22) '
+    # 'and product.product_id not in (68, 69, 122, 169) '
+    'group by cluster_id having count(*) > 10 ' #product quality in cluster > 10
+    'order by ran limit 5) tb2 ' #limit cluster quality
+    'on product.cluster_id = tb2.cluster_id '
+    'order by tb2.ran;'
+]
+
 cursor = mydb.cursor()
+cursor.execute('SELECT product_id, product_title, product.cluster_id FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11')
 # cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
-cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
+# cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169) ORDER BY rand() limit 100')
+# cursor.execute(query[0])
 results = cursor.fetchall()
+list_id = []
 list_title = []
+list_old_cluster = []
 for result in results:
-    list_title.append(result[0])
+    list_id.append(result[0])
+    list_title.append(re.sub('(?<=\d) (?=gb)', '', result[1]))
+    list_old_cluster.append(result[2])
+list_old_cluster_set = list(set(list_old_cluster))
+print(list_old_cluster_set)
 # print(list_title)
 
 # stopwords = nltk.corpus.stopwords.words('english')
 # print(type(stopwords))
-stopwords = ['black', 'white', 'grey', 'silver', 'unlocked', 'sim', 'free', 'gold', 'rose', 'space', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile', 'single']
+# stopwords = []
+stopwords = ['black', 'white', 'grey', 'silver', 'unlocked', 'sim', 'free', 'gold', 'rose', 'space', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile', 'single', 'cm', '4g', '4.7', '5.5', '5.8']
 # stopwords = ['black', 'white', 'grey', 'silver', 'gold', 'rose']
 # stopwords.append(stopwords1)
 stemmer = SnowballStemmer('english')
@@ -85,8 +110,8 @@ def tokenizer(text):
     return tokens
 
 # tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=True, ngram_range=(1,3), tokenizer=tokenize)
-tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=True, ngram_range=(1,3), tokenizer=tokenize)
-# print(tfidf_vectorizer)
+# tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=False, ngram_range=(1,3), tokenizer=tokenize)
+tfidf_vectorizer = TfidfVectorizer(max_df=0.7, max_features=20000, min_df=0.02, stop_words=stopwords, ngram_range=(1,3), tokenizer=tokenize)
 start = time.time()
 tfidf_matrix = tfidf_vectorizer.fit_transform(list_title)
 print("Time: ", time.time() - start)
@@ -102,12 +127,14 @@ print(terms)
 # print(df)
 
 dist = cosine_similarity(tfidf_matrix)
-# print(dist[0])
+# print(dist[6][2])
+# print(dist[159][149])
+
 # print(cosine_similarity(tfidf_matrix)[0])
 
 # linkage_matrix = ward(dist) #define the linkage_matrix using ward clustering pre-computed distances
-linkage_matrix = linkage(dist, 'complete') #define the linkage_matrix using single-linkage clustering pre-computed distances
-# for i in range(0, 209):
+linkage_matrix = linkage(dist, 'complete', metric='cosine') #define the linkage_matrix using single-linkage clustering pre-computed distances
+# for i in range(0, len(linkage_matrix)-1):
 #     print(i, ": ", linkage_matrix[i])
 
 # linkage_matrix1 = hierarchy.linkage(dist, metric='cosine')
@@ -133,49 +160,49 @@ plt.savefig('cluster_result.png', dpi=200) #save figure as ward_clusters
 # plt.close()
 
 # https://stackoverflow.com/questions/23856002/python-get-clustered-data-hierachical-clustering
-n = len(list_title)
-cluster_dict = dict()
-for i in range(0, 196):
-    new_cluster_id = n+i
-    old_cluster_id_0 = linkage_matrix[i, 0]
-    old_cluster_id_1 = linkage_matrix[i, 1]
-    combined_ids = list()
-    if old_cluster_id_0 in cluster_dict:
-        combined_ids += cluster_dict[old_cluster_id_0]
-        del cluster_dict[old_cluster_id_0]
-    else:
-        combined_ids += [old_cluster_id_0]
-    if old_cluster_id_1 in cluster_dict:
-        combined_ids += cluster_dict[old_cluster_id_1]
-        del cluster_dict[old_cluster_id_1]
-    else:
-        combined_ids += [old_cluster_id_1]
-    cluster_dict[new_cluster_id] = combined_ids
-# print(cluster_dict)
-print("Len dict: ", len(cluster_dict))
+# n = len(list_title)
+# cluster_dict = dict()
+# for i in range(0, 196):
+#     new_cluster_id = n+i
+#     old_cluster_id_0 = linkage_matrix[i, 0]
+#     old_cluster_id_1 = linkage_matrix[i, 1]
+#     combined_ids = list()
+#     if old_cluster_id_0 in cluster_dict:
+#         combined_ids += cluster_dict[old_cluster_id_0]
+#         del cluster_dict[old_cluster_id_0]
+#     else:
+#         combined_ids += [old_cluster_id_0]
+#     if old_cluster_id_1 in cluster_dict:
+#         combined_ids += cluster_dict[old_cluster_id_1]
+#         del cluster_dict[old_cluster_id_1]
+#     else:
+#         combined_ids += [old_cluster_id_1]
+#     cluster_dict[new_cluster_id] = combined_ids
+# # print(cluster_dict)
+# print("Len dict: ", len(cluster_dict))
 
 # test cluster in 104 times loop
 # for i in cluster_dict.keys():
 #     print("Cluster: ", i ,cluster_dict.get(i))
 
 # combine to new list title
-clusted_list_title = dict()
-count = 0
-for i in cluster_dict.keys():
-    list_cluster = []
-    for t in cluster_dict.get(i):
-        list_cluster.append(list_title[int(t)])
-    clusted_list_title[count] = list_cluster
-    count+= 1
+# clusted_list_title = dict()
+# count = 0
+# for i in cluster_dict.keys():
+#     list_cluster = []
+#     for t in cluster_dict.get(i):
+#         list_cluster.append(list_title[int(t)])
+#     clusted_list_title[count] = list_cluster
+#     count+= 1
 
-print(len(clusted_list_title))
-dem = 0
-for i in clusted_list_title:
-    print("Cluser: ", i, "Quality: ", len(clusted_list_title.get(i)))
-    for title in clusted_list_title.get(i):
-        print(title)
-        dem+= 1
-print("Title Quality: ", dem)
+# print(len(clusted_list_title))
+# dem = 0
+# for i in clusted_list_title:
+#     print("Cluser: ", i, "Quality: ", len(clusted_list_title.get(i)))
+#     for title in clusted_list_title.get(i):
+#         # print(title)
+#         dem+= 1
+# print("Title Quality: ", dem)
 
 # https://stackabuse.com/hierarchical-clustering-with-python-and-scikit-learn/
 model = AgglomerativeClustering(n_clusters=12, affinity='cosine', linkage='complete')
@@ -210,21 +237,18 @@ plt.close()
 
 from scipy.cluster.hierarchy import fcluster
 max_d = 10
-clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
+# clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
+clusters = fcluster(linkage_matrix, t=0.65, criterion='distance')
 print("Len clusters: ", len(clusters))
 print(clusters)
+clus_set = list(set(clusters))
+print(clus_set)
 
 clus_list = []
-for i in range(0, len(clusters)-1):
-    clus_dict = {'id': i, 'title': list_title[i], 'cluster': clusters.item(i)}
+for i in range(0, len(clusters)):
+    clus_dict = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': clusters.item(i), 'title': list_title[i]}
     clus_list.append(clus_dict)
-
-for i in range(1, max_d):
-    print("Cluster ", i)
-    d = 0
-    for c in clus_list:
-        if c.get('cluster') == i:
-            print(c)
-            d+= 1
-    print("Quality: ", d)
+clus_list.sort(key=lambda item: item.get("new_cluster"))
+for cl in clus_list:
+    print(cl)
 

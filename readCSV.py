@@ -20,11 +20,12 @@ mydb = MySQLdb.connect(
 cursor = mydb.cursor()
 
 # Create Table
-cursor.execute('DROP TABLE IF EXISTS `product`; CREATE TABLE product(product_id int(20), product_title varchar(200), vendor_id int(10), cluster_id int(10), cluster_label varchar(100), category_id int(10), category_label varchar(50))')
+# cursor.execute('DROP TABLE IF EXISTS `product`; CREATE TABLE product(product_id int(20), product_title varchar(200), vendor_id int(10), cluster_id int(10), cluster_label varchar(100), category_id int(10), category_label varchar(50))')
 
 # Insert DataFrame to Table
 for row in df.itertuples():
     cursor.execute('INSERT INTO product(product_id, product_title, vendor_id, cluster_id, cluster_label, category_id, category_label) VALUES(%s, %s, %s, %s, %s, %s, %s)', [row.product_id, row.product_title, row.vendor_id, row.cluster_id, row.cluster_label, row.category_id, row.category_label])
+    # cursor.execute('INSERT INTO matcher_product(title, vendor_id, cluster_id, cluster_label, category_id, category_label) VALUES(%s, %s, %s, %s, %s, %s)', [row.product_title, row.vendor_id, row.cluster_id, row.cluster_label, row.category_id, row.category_label])
 mydb.commit()
 cursor.close()
 print("Done!")
