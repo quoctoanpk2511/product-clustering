@@ -7,6 +7,8 @@ hospital_accounts = pd.read_csv(
     'https://github.com/chris1610/pbpython/raw/master/data/hospital_account_info.csv',
     index_col='Account_Num'
 )
+for df in hospital_accounts:
+    print(df)
 hospital_reimbursement = pd.read_csv(
     'https://raw.githubusercontent.com/chris1610/pbpython/master/data/hospital_reimbursement.csv',
     index_col='Provider_Num'

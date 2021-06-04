@@ -7,10 +7,12 @@ from scrapy.http import HtmlResponse
 from selenium.webdriver.chrome.options import Options
 
 laptop_page_url = "https://shopee.vn/Laptop-cat.13030.13065?order=desc&sortBy=price&page={}"
+# laptop_page_url = "https://shopee.vn/Laptop-cat.13030.13065?brands=131770&maxPrice=20000000&minPrice=5000000&page={}"
 # laptop_page_url = "https://tiki.vn/dien-thoai-smartphone/c1795?src=c.1789.hamburger_menu_fly_out_banner{}"
 product_url = "https://shopee.vn/api/v2/item/get?itemid={}&shopid={}"
 params = {'q':'goog'}
 headers={'User-Agent': 'Mozilla/5.0'}
+# Them vao header "if-none-match-": "55b03-1c978cd3e7aa24bda774046ac69f692d"
 options = Options()
 options.headless = True
 options.add_argument("window-size=1920,1080"
@@ -41,14 +43,14 @@ mydb = MySQLdb.connect(
 cursor = mydb.cursor()
 
 # Create Table
-# cursor.execute('CREATE TABLE crawl_product(id int(20) NOT NULL AUTO_INCREMENT, product_id int(20), sku varchar(50), product_title varchar(200), url_key varchar(200), url_path varchar(200), vendor varchar(20), short_desc varchar(1000), price int(20), PRIMARY KEY (id))')
+cursor.execute('DROP TABLE IF EXISTS `shopee_product`; CREATE TABLE shopee_product(id int(20) NOT NULL AUTO_INCREMENT, product_id int(20), sku varchar(50), product_title varchar(200), url_key varchar(200), url_path varchar(200), vendor varchar(20), short_desc varchar(1000), price int(20), PRIMARY KEY (id))')
 
 product_link_list = []
 
 def crawl_product_id():
     product_id_list = []
     i = 1
-    while (i<10):
+    while (i<3):
         driver = webdriver.Chrome("C:/bin/chromedriver.exe", chrome_options=options)
         driver.get(laptop_page_url.format(i))
         if "https://shopee.vn/Laptop-cat.13030.13065" in laptop_page_url.format(i):
@@ -69,7 +71,7 @@ def crawl_product_id():
             body = driver.page_source
             abc = driver.current_url
             response = HtmlResponse(abc, body=body, encoding='utf8')
-            print(response)
+            print(body)
             if (response == None):
                 break
 
@@ -149,19 +151,19 @@ def load_raw_product():
     file = open(product_data_file, "r")
     return file.readlines()
 
-# product_id_list, page = crawl_product_id()
-#
-# print("No. Page: ", page - 1)
-# print("No. Product ID: ", len(product_id_list))
-#
-# # save product id for backup
-# save_product_id(product_id_list)
-#
-# # crawl detail for each product id
-# product_list = crawl_product(product_id_list)
-#
-# # save product detail for backup
-# save_raw_product(product_list)
+product_id_list, page = crawl_product_id()
+
+print("No. Page: ", page - 1)
+print("No. Product ID: ", len(product_id_list))
+
+# save product id for backup
+save_product_id(product_id_list)
+
+# crawl detail for each product id
+product_list = crawl_product(product_id_list)
+
+# save product detail for backup
+save_raw_product(product_list)
 
 product_list = load_raw_product()
 # flatten detail before converting to csv
@@ -193,9 +195,9 @@ for i, item in enumerate(product_json_list):
     # thumbnail_url = validate_string((item.get("thumbnail_url", None)))
     print("STT: ", i)
     print(product_id)
-    cursor.execute(
-        'INSERT INTO crawl_product(product_id, product_title, url_key, url_path, vendor, short_desc, price) VALUES (%s,%s,%s,%s,%s,%s,%s)',
-        (product_id, product_title, url_key, url_path, vendor, short_desc, price))
-    #     print("Done!")
-mydb.commit()
-cursor.close()
+#     cursor.execute(
+#         'INSERT INTO crawl_product(product_id, product_title, url_key, url_path, vendor, short_desc, price) VALUES (%s,%s,%s,%s,%s,%s,%s)',
+#         (product_id, product_title, url_key, url_path, vendor, short_desc, price))
+#     #     print("Done!")
+# mydb.commit()
+# cursor.close()

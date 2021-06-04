@@ -5,6 +5,7 @@ import unicodecsv as csv
 
 # laptop_page_url = "https://tiki.vn/laptop/c8095?src=c.8095.hamburger_menu_fly_out_banner&_lc=&page={}"
 laptop_page_url = "https://tiki.vn/api/v2/products?limit=48&include=advertisement&aggregations=1&category=8095&page={}&urlKey=laptop"
+#laptop_page_url = "https://tiki.vn/api/v2/products?limit=48&include=advertisement&aggregations=1&category=8095&page={}&urlKey=laptop&brand=18805&&price=10000000%2C25000000"
 # laptop_page_url = "https://tiki.vn/dien-thoai-smartphone/c1795?src=c.1789.hamburger_menu_fly_out_banner{}"
 product_url = "https://tiki.vn/api/v2/products/{}"
 params = {'q':'goog'}
@@ -31,7 +32,8 @@ mydb = MySQLdb.connect(
 cursor = mydb.cursor()
 
 # Create Table
-# cursor.execute('CREATE TABLE crawl_product(id int(20) NOT NULL AUTO_INCREMENT, product_id int(20), sku varchar(50), product_title varchar(200), url_key varchar(200), url_path varchar(200), vendor varchar(20), short_desc varchar(1000), price int(20), PRIMARY KEY (id))')
+# cursor.execute('CREATE TABLE tiki_product(id int(20) NOT NULL AUTO_INCREMENT, product_id int(20), sku varchar(50), product_title varchar(200), url_key varchar(200), url_path varchar(200), vendor varchar(20), short_desc varchar(1000), price int(20), PRIMARY KEY (id))')
+cursor.execute('DROP TABLE IF EXISTS `tiki_product`; CREATE TABLE tiki_product(id int(20) NOT NULL AUTO_INCREMENT, pid int(20), sku varchar(255), name varchar(255), url_key varchar(255), url_path varchar(255), sales_page varchar(20), short_desc varchar(5000), price int(20), category varchar(255), brand varchar(255), store_id int(20), store_name varchar(255), PRIMARY KEY (id))')
 
 # def crawl_product_id():
 #     product_id_list = []
@@ -140,22 +142,22 @@ def save_product_list(product_json_list):
     print("Save file: ", product_file)
 
 
-# crawl product id
-product_id_list, page = crawl_product_id()
+# # crawl product id
+# product_id_list, page = crawl_product_id()
+#
+# print("No. Page: ", page - 1)
+# print("No. Product ID: ", len(product_id_list))
+#
+# # save product id for backup
+# save_product_id(product_id_list)
+#
+# # crawl detail for each product id
+# product_list = crawl_product(product_id_list)
+#
+# # save product detail for backup
+# save_raw_product(product_list)
 
-print("No. Page: ", page - 1)
-print("No. Product ID: ", len(product_id_list))
-
-# save product id for backup
-save_product_id(product_id_list)
-
-# crawl detail for each product id
-product_list = crawl_product(product_id_list)
-
-# save product detail for backup
-save_raw_product(product_list)
-
-# product_list = load_raw_product()
+product_list = load_raw_product()
 # flatten detail before converting to csv
 product_json_list = [adjust_product(p) for p in product_list]
 # for pj in product_json_list:
@@ -173,17 +175,54 @@ def validate_string(val):
         else:
             return val
 
+def validate_json(val):
+    if val != None:
+        return json.loads(val)
+
 # json_obj = json.loads(product_json_list)
 for i, item in enumerate(product_json_list):
-    product_id = validate_string(item.get("id", None))
+
     sku = validate_string(item.get("sku", None))
-    product_title = validate_string(item.get("name", None))
+    name = validate_string(item.get("name", None))
     url_key = validate_string(item.get("url_key", None))
     url_path = validate_string(item.get("url_path", None))
-    vendor = "tiki"
+    sales_page = "tiki"
     short_desc = validate_string(item.get("short_description", None))
-    price = validate_string(item.get("price", None))
-    thumbnail_url = validate_string((item.get("thumbnail_url", None)))
+    category = validate_json(validate_string(item['categories']))['name']
+    brand = validate_json(validate_string(item['brand']))['name']
+
+    other_sellers = validate_json(validate_string(item['other_sellers']))
+    if other_sellers:
+        for other_seller in other_sellers:
+            pid = other_seller['product_id']
+            price = other_seller['price']
+            store_id = other_seller['store_id']
+            store_name = other_seller['name']
+            cursor.execute(
+                'INSERT INTO tiki_product(pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, store_id, store_name) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+                (pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, store_id,
+                 store_name))
+
+    current_seller = validate_json(validate_string(item['current_seller']))
+    if current_seller != None:
+        pid = current_seller['product_id']
+        price = current_seller['price']
+        store_id = current_seller['store_id']
+        store_name = current_seller['name']
+
+    # id = validate_string(product['id'])
+    # sku = validate_string(product['sku'])
+    # name = validate_string(product['name'])
+    # print(id, sku, name)
+    # url_key = validate_string(item.get("url_key", None))
+    # url_path = validate_string(item.get("url_path", None))
+    # sales_page = "tiki"
+    # short_desc = validate_string(item.get("short_description", None))
+    # price = validate_string(item.get("price", None))
+    # category = validate_string(item['categories'][0])
+
+    # brand = validate_string()
+    # thumbnail_url = validate_string((item.get("thumbnail_url", None)))
     # code = item.get("badges", None)
     # product_id = item.get("id")
     # sku = item.get("sku")
@@ -193,8 +232,8 @@ for i, item in enumerate(product_json_list):
     # vendor = "tiki"
     # short_desc = "No desc"
     # price = item.get("price")
-#
-    cursor.execute('INSERT INTO crawl_product(product_id, sku, product_title, url_key, url_path, vendor, short_desc, price) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', (product_id, sku, product_title, url_key, url_path, vendor, short_desc, price))
+    if price > 3000000:
+        cursor.execute('INSERT INTO tiki_product(pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, store_id, store_name) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)', (pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, store_id, store_name))
 #     print("Done!")
 mydb.commit()
 cursor.close()
