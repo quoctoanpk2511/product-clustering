@@ -29,7 +29,7 @@ cursor = mydb.cursor()
 
 # Create Table
 # cursor.execute('CREATE TABLE tiki_product(id int(20) NOT NULL AUTO_INCREMENT, product_id int(20), sku varchar(50), product_title varchar(200), url_key varchar(200), url_path varchar(200), vendor varchar(20), short_desc varchar(1000), price int(20), PRIMARY KEY (id))')
-cursor.execute('DROP TABLE IF EXISTS `sendo_product`; CREATE TABLE sendo_product(id int(20) NOT NULL AUTO_INCREMENT, pid int(20), sku varchar(255), name varchar(255), url_key varchar(255), cat_path varchar(255), sales_page varchar(20), short_desc varchar(5000), price int(20), category varchar(255), brand varchar(255), shop_id int(20), shop_name varchar(255), PRIMARY KEY (id))')
+# cursor.execute('DROP TABLE IF EXISTS `sendo_product`; CREATE TABLE sendo_product(id int(20) NOT NULL AUTO_INCREMENT, pid int(20), sku varchar(255), name varchar(255), url_key varchar(255), cat_path varchar(255), sales_page varchar(20), short_desc varchar(5000), price int(20), category varchar(255), brand varchar(255), shop_id int(20), shop_name varchar(255), PRIMARY KEY (id))')
 
 def crawl_product_id():
     product_list = []
@@ -148,7 +148,7 @@ for i, item in enumerate(product_json_list):
     sku = validate_string(item.get("sku", None))
     name = validate_string(item.get("name", None))
     url_key = validate_string(item.get("url_key", None))
-    cat_path = validate_string(item.get("cat_path", None))
+    url_path = validate_string(item.get("cat_path", None))
     sales_page = "sendo"
     short_desc = validate_string(item.get("short_description", None)).replace('🎈🎈','')
     print(short_desc)
@@ -161,8 +161,8 @@ for i, item in enumerate(product_json_list):
     shop_id = validate_string(item['shop_info']['shop_id'])
     shop_name = validate_string(item['shop_info']['shop_name'])
     cursor.execute(
-        'INSERT INTO sendo_product(pid, sku, name, url_key, cat_path, sales_page, short_desc, price, category, brand, shop_id, shop_name) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
-        (pid, sku, name, url_key, cat_path, sales_page, short_desc, price, category, brand, shop_id, shop_name))
+        'INSERT INTO test_tiki_product(pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, shop_id, shop_name) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)',
+        (pid, sku, name, url_key, url_path, sales_page, short_desc, price, category, brand, shop_id, shop_name))
     print("Done!")
 mydb.commit()
 cursor.close()

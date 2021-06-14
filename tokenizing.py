@@ -4,6 +4,7 @@ import pandas as pd
 from nltk.stem.snowball import SnowballStemmer
 import MySQLdb
 import environ
+from sklearn.feature_extraction import text
 from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 from sklearn.metrics.pairwise import cosine_similarity
@@ -42,9 +43,15 @@ query = [
 
 cursor = mydb.cursor()
 # cursor.execute('SELECT product_id, product_title, product.cluster_id FROM `product-clustering`.product WHERE category_id = 2612')
-cursor.execute('SELECT product_id, product_title, product.cluster_id, product.cluster_label FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
+# cursor.execute('SELECT product_id, product_title, product.cluster_id, product.cluster_label FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169)')
 # cursor.execute('SELECT product_title FROM `product-clustering`.product WHERE category_id = 2612 AND cluster_id < 11 AND product_id NOT IN (68, 69, 122, 169) ORDER BY rand() limit 100')
 # cursor.execute(query[0])
+# cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM `product-clustering`.kaggle_product WHERE cluster_id IN (1, 3, 7, 6, 11, 16, 19, 20, 22, 27, 29, 37) AND product_id NOT IN (213, 338)')
+# cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM `product-clustering`.kaggle_product WHERE cluster_id IN (1,2,3,5,7,4,6,10,22,8,12,13,9,19,20,29,11,16,21,25,27)')
+# cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM `product-clustering`.kaggle_product WHERE cluster_id IN (1,2,3,5,7,4,10,8,12,9,15,17,18,23,60,74,14,34)')
+# cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM `product-clustering`.kaggle_product WHERE category_id = 2612 AND cluster_id < 14')
+# cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM `product-clustering`.kaggle_product where cluster_id in (SELECT cluster_id FROM kaggle_product GROUP BY cluster_id having count(product_id) > 15)')
+cursor.execute('SELECT product_id, product_title, cluster_id, cluster_label FROM product where category_id != 2614 AND cluster_id in (SELECT cluster_id FROM product GROUP BY cluster_id having count(product_id) >= 20)')
 results = cursor.fetchall()
 list_id = []
 list_title = []
@@ -52,7 +59,8 @@ list_old_cluster = []
 list_label = []
 for result in results:
     list_id.append(result[0])
-    list_title.append(re.sub('(?<=\d) (?=gb)', '', result[1]))
+    list_title.append(re.sub('(?<=\d) (?=gb)', '', re.sub('(?<=\d) (?=cm)', '',re.sub('\W', ' ', re.sub('(?<=\d) (?=kg)', '',re.sub('\W', ' ', result[1]))))))
+    # list_title.append(re.sub('\W', ' ', result[1]))
     list_old_cluster.append(result[2])
     list_label.append(result[3])
 list_old_cluster_set = list(set(list_old_cluster))
@@ -61,9 +69,12 @@ print("list old cluster: ", len(list_old_cluster_set))
 
 # stopwords = nltk.corpus.stopwords.words('english')
 # print(type(stopwords))
-# stopwords = []
-stopwords = ['black', 'white', 'grey', 'silver', 'unlocked', 'sim', 'free', 'gold', 'rose', 'space', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile', 'single', 'cm', '4g', '4.7', '5.5', '5.8']
-# stopwords = ['black', 'white', 'grey', 'silver', 'gold', 'rose']
+stopwords = []
+# stopwords = ['black', 'white', 'silver', 'unlocked', 'sim', 'free', '4g', 'gold', 'rose', 'space', 'grey', 'spacegrau', 'handset', 'only', 'mobile phone', 'phone', 'smartphone', 'in', 'mobile', 'single', 'stock']
+# stopwords = ['black', 'white', 'grey', 'silver', 'gold', 'rose', 'pink]
+# stopwords = ['unlocked', 'sim', 'free', 'black', 'white', 'grey', 'silver', 'blue', 'gold', 'rose', 'pink']
+# stopwords = ['unlocked', 'sim', 'free', '4g', 'in', 'black', 'white', 'grey', 'silver', 'blue', 'gold', 'rose', 'pink']
+# stopwords = text.ENGLISH_STOP_WORDS
 # stopwords.append(stopwords1)
 stemmer = SnowballStemmer('english')
 # titles = ['apple iphone 8 plus 64gb silver', 'apple iphone 7']
@@ -114,21 +125,22 @@ def tokenizer(text):
 
 # tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=True, ngram_range=(1,3), tokenizer=tokenize)
 # tfidf_vectorizer = TfidfVectorizer(max_df=0.6, max_features=20000, min_df=10, stop_words=stopwords, use_idf=False, ngram_range=(1,3), tokenizer=tokenize)
-tfidf_vectorizer = TfidfVectorizer(max_df=0.7, max_features=20000, min_df=0.01, stop_words=stopwords, ngram_range=(1,3), tokenizer=tokenize)
-tfidf_vectorizer1 = TfidfVectorizer(ngram_range=(1,3))
+tfidf_vectorizer = TfidfVectorizer(max_df=0.6, min_df=0.05, stop_words=stopwords, ngram_range=(1,3), tokenizer=tokenize)
+# tfidf_vectorizer = TfidfVectorizer(stop_words = stopwords, ngram_range=(1,3))
+# tfidf_vectorizer1 = TfidfVectorizer(ngram_range=(1,3))
 # start = time.time()
 tfidf_matrix = tfidf_vectorizer.fit_transform(list_title)
-tfidf_matrix1 = tfidf_vectorizer1.fit_transform(list_label)
+# tfidf_matrix1 = tfidf_vectorizer1.fit_transform(list_label)
 # print("Time: ", time.time() - start)
 print("shape: ", tfidf_matrix.shape)
-print("shape1: ", tfidf_matrix1.shape)
+# print("shape1: ", tfidf_matrix1.shape)
 # print(tfidf_matrix)
 # print(tfidf_matrix[0][1], tfidf_matrix[0][210])
 
 terms = tfidf_vectorizer.get_feature_names()
-terms1 = tfidf_vectorizer1.get_feature_names()
+# terms1 = tfidf_vectorizer1.get_feature_names()
 print(terms)
-print(terms1)
+# print(terms1)
 
 # tfidf matrix
 # df = pd.DataFrame(data=tfidf_matrix.toarray(), index=list_title,
@@ -136,25 +148,26 @@ print(terms1)
 # print(df)
 
 dist = cosine_similarity(tfidf_matrix)
-dist1 = cosine_similarity(tfidf_matrix1)
-print("dist: ", len(dist), "dist1: ", len(dist1))
-print(dist)
-print(dist1)
-# print(dist[1][1])
+dist2 = 1 - cosine_similarity(tfidf_matrix)
+# dist1 = cosine_similarity(tfidf_matrix1)
+# print("dist: ", len(dist), "dist1: ", len(dist1))
+# print(dist2)
+# print(dist1)
 # print(dist[159][159])
 # print(dist[2][206])
 
 import numpy as np
 A = np.array(dist)
-B = np.array(dist1)
-C = A*0.5 + B*0.5
-print("len C: ", len(C))
+# B = np.array(dist1)
+# C = A*0.5 + B*0.5
+# print("len C: ", len(C))
 
 # print(cosine_similarity(tfidf_matrix)[0])
 
-# linkage_matrix = ward(dist) #define the linkage_matrix using ward clustering pre-computed distances
-# linkage_matrix = linkage(dist, 'complete', metric='cosine') #define the linkage_matrix using single-linkage clustering pre-computed distances
-linkage_matrix1 = linkage(C, 'complete', metric='cosine') #define the linkage_matrix using single-linkage clustering pre-computed distances
+print("---------------Hierarchical Clustering----------------")
+
+
+# linkage_matrix1 = linkage(C, 'complete', metric='cosine') #define the linkage_matrix using single-linkage clustering pre-computed distances
 # for i in range(0, len(linkage_matrix)-1):
 #     print(i, ": ", linkage_matrix[i])
 
@@ -175,8 +188,8 @@ linkage_matrix1 = linkage(C, 'complete', metric='cosine') #define the linkage_ma
 #
 # plt.tight_layout() #show plot with tight layout
 # plt.axvline(x=3.7, color='r', linestyle='--')
-
-# uncomment below to save figure
+#
+# # uncomment below to save figure
 # plt.savefig('cluster_result.png', dpi=200) #save figure as ward_clusters
 # plt.close()
 
@@ -225,10 +238,21 @@ linkage_matrix1 = linkage(C, 'complete', metric='cosine') #define the linkage_ma
 #         dem+= 1
 # print("Title Quality: ", dem)
 
+print("Agglomerative")
 # https://stackabuse.com/hierarchical-clustering-with-python-and-scikit-learn/
-# model = AgglomerativeClustering(n_clusters=12, affinity='cosine', linkage='complete')
-# cluster = AgglomerativeClustering(n_clusters=None, affinity='cosine', linkage='single', distance_threshold=3)
+# cluster5 = AgglomerativeClustering(n_clusters=12, affinity='precomputed', linkage='complete')
+cluster5 = AgglomerativeClustering(n_clusters=None, affinity='precomputed', linkage='complete', distance_threshold=0.88)
 # clusted = model.fit_predict(linkage_matrix)
+cluster5.fit_predict(dist2)
+clus_list = []
+for i in range(0, len(cluster5.labels_)):
+    clus_dict = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': cluster5.labels_.item(i), 'title': list_title[i]}
+    clus_list.append(clus_dict)
+clus_list.sort(key=lambda item: item.get("new_cluster"))
+for cl in clus_list:
+    print(cl)
+
+
 # for i in range(0, 209):
 #     print(i, ": ", linkage_matrix[i])
 # cluster.fit(linkage_matrix)
@@ -257,49 +281,88 @@ linkage_matrix1 = linkage(C, 'complete', metric='cosine') #define the linkage_ma
 # plt.close()
 
 from scipy.cluster.hierarchy import fcluster
-max_d = 10
-# clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
-# clusters = fcluster(linkage_matrix, t=0.5, criterion='distance')
-clusters1 = fcluster(linkage_matrix1, t=0.13, criterion='distance')
+# print("Average method")
+# # linkage_matrix = ward(dist) #define the linkage_matrix using ward clustering pre-computed distances
+# linkage_matrix = linkage(dist2, method='average', metric='cosine') #define the linkage_matrix using single-linkage clustering pre-computed distances
+# max_d = 10
+# # clusters = fcluster(linkage_matrix, max_d, criterion='maxclust')
+# clusters = fcluster(linkage_matrix, t=0.008, criterion='distance')
+# clusters1 = fcluster(linkage_matrix1, t=0.13, criterion='distance')
 # print("Len clusters: ", len(clusters), "Len clusters 1: ", len(clusters1))
 # print(clusters)
-print(len(clusters1))
-print(clusters1)
+# print(len(clusters1))
+# print(clusters1)
 # clus_set = list(set(clusters))
 # print(clus_set)
-clus_set1 = list(set(clusters1))
-print(clus_set1)
+# clus_set1 = list(set(clusters1))
+# print(clus_set1)
 
 # clus_list = []
 # for i in range(0, len(clusters)):
 #     clus_dict = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': clusters.item(i), 'title': list_title[i]}
 #     clus_list.append(clus_dict)
+# clus_list.sort(key=lambda item: item.get("old_cluster"))
+# for cl in clus_list:
+#     print(cl)
+
+print("Complete method")
+
+linkage_matrix2 = linkage(tfidf_matrix.todense(), method='complete', metric='cosine')
+# max_d = 21
+# clusters2 = fcluster(linkage_matrix, max_d, criterion='maxclust')
+# clusters2 = fcluster(linkage_matrix2, t=0.88, criterion='distance')
+# clus_list = []
+# for i in range(0, len(clusters2)):
+#     clus_dict = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': clusters2.item(i), 'title': list_title[i]}
+#     clus_list.append(clus_dict)
 # clus_list.sort(key=lambda item: item.get("new_cluster"))
 # for cl in clus_list:
 #     print(cl)
-# print("")
-clus_list1 = []
-for i in range(0, len(clusters1)):
-    clus_dict1 = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': clusters1.item(i), 'title': list_title[i]}
-    clus_list1.append(clus_dict1)
-clus_list1.sort(key=lambda item: item.get("new_cluster"))
-print("len: ", len(clus_list1))
-for cl in clus_list1:
-    print(cl)
+
+fig, ax = plt.subplots(figsize=(15, 20)) # set size
+ax = dendrogram(linkage_matrix2, orientation="right", labels=list_title);
+
+plt.tick_params(\
+    axis= 'x',          # changes apply to the x-axis
+    which='both',      # both major and minor ticks are affected
+    bottom='off',      # ticks along the bottom edge are off
+    top='off',         # ticks along the top edge are off
+    labelbottom='off')
+
+plt.tight_layout() #show plot with tight layout
+plt.axvline(x=0.65, color='r', linestyle='--')
+
+# uncomment below to save figure
+plt.savefig('cluster_result.png', dpi=200) #save figure as ward_clusters
+plt.close()
+
+# print("Ward method")
+# linkage_matrix3 = ward(dist2)
+# max_d = 13
+# clusters3 = fcluster(linkage_matrix, max_d, criterion='maxclust')
+# clus_list = []
+# for i in range(0, len(clusters3)):
+#     clus_dict1 = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': clusters3.item(i), 'title': list_title[i]}
+#     clus_list.append(clus_dict1)
+# clus_list.sort(key=lambda item: item.get("new_cluster"))
+# print("len: ", len(clus_list))
+# for cl in clus_list:
+#     print(cl)
 
 print("---------------Kmean Clustering----------------")
 from sklearn.cluster import KMeans
 
-km = KMeans(n_clusters=11)
-km.fit(C)
-k_clusters = km.labels_
-print(k_clusters)
-
-clus_list1 = []
-for i in range(0, len(k_clusters)):
-    clus_dict1 = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': k_clusters[i], 'title': list_title[i]}
-    clus_list1.append(clus_dict1)
-clus_list1.sort(key=lambda item: item.get("new_cluster"))
-print("len: ", len(clus_list1))
-for cl in clus_list1:
-    print(cl)
+# km = KMeans(n_clusters=15)
+# # km.fit(C)
+# km.fit(tfidf_matrix)
+# k_clusters = km.labels_
+# # print(k_clusters)
+#
+# clus_list1 = []
+# for i in range(0, len(k_clusters)):
+#     clus_dict1 = {'id': list_id[i], 'old_cluster': list_old_cluster[i], 'new_cluster': k_clusters[i], 'title': list_title[i]}
+#     clus_list1.append(clus_dict1)
+# clus_list1.sort(key=lambda item: item.get("new_cluster"))
+# print("len: ", len(clus_list1))
+# for cl in clus_list1:
+#     print(cl)
